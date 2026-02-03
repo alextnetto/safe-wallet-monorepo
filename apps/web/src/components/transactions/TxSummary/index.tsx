@@ -1,7 +1,7 @@
 import type { ModuleTransaction, MultisigTransaction } from '@safe-global/store/gateway/AUTO_GENERATED/transactions'
 import TxProposalChip from '@/features/proposers/components/TxProposalChip'
-import StatusLabel from '@/features/swap/components/StatusLabel'
-import useIsExpiredSwap from '@/features/swap/hooks/useIsExpiredSwap'
+import { SwapFeature, useIsExpiredSwap } from '@/features/swap'
+import { useLoadFeature } from '@/features/__core__'
 import { Box, Typography } from '@mui/material'
 import type { ReactElement } from 'react'
 
@@ -35,6 +35,7 @@ type TxSummaryProps = {
 }
 
 const TxSummary = ({ item, isConflictGroup, isBulkGroup }: TxSummaryProps): ReactElement => {
+  const { StatusLabel } = useLoadFeature(SwapFeature)
   const hasDefaultTokenlist = useHasFeature(FEATURES.DEFAULT_TOKENLIST)
 
   const tx = item.transaction
