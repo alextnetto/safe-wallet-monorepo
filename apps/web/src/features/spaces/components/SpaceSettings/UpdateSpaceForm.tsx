@@ -3,7 +3,7 @@ import { FormProvider, useForm } from 'react-hook-form'
 import { showNotification } from '@/store/notificationsSlice'
 import { type GetSpaceResponse, useSpacesUpdateV1Mutation } from '@safe-global/store/gateway/AUTO_GENERATED/spaces'
 import { useAppDispatch } from '@/store'
-import { useIsAdmin } from '@/features/spaces/hooks/useSpaceMembers'
+import { useIsAdmin } from '@/features/spaces'
 import { useState } from 'react'
 
 type UpdateSpaceFormData = {
