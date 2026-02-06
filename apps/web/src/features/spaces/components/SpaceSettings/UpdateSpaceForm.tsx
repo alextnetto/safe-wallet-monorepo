@@ -23,6 +23,8 @@ const UpdateSpaceForm = ({ space }: { space: GetSpaceResponse | undefined }) => 
     },
   })
 
+  const isSubmitting = formMethods.formState.isSubmitting
+
   const { control, handleSubmit, watch } = formMethods
 
   const formName = watch('name')
@@ -78,7 +80,7 @@ const UpdateSpaceForm = ({ space }: { space: GetSpaceResponse | undefined }) => 
           variant="contained"
           type="submit"
           sx={{ mt: 2 }}
-          disabled={!isNameChanged || !isAdmin}
+          disabled={!isNameChanged || !isAdmin || isSubmitting}
         >
           Save
         </Button>
