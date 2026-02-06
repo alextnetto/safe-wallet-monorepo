@@ -1,5 +1,5 @@
 import { Alert, Button, TextField } from '@mui/material'
-import { FormProvider, useForm } from 'react-hook-form'
+import { Controller, FormProvider, useForm } from 'react-hook-form'
 import { showNotification } from '@/store/notificationsSlice'
 import { type GetSpaceResponse, useSpacesUpdateV1Mutation } from '@safe-global/store/gateway/AUTO_GENERATED/spaces'
 import { useAppDispatch } from '@/store'
@@ -23,7 +23,7 @@ const UpdateSpaceForm = ({ space }: { space: GetSpaceResponse | undefined }) => 
     },
   })
 
-  const { register, handleSubmit, watch } = formMethods
+  const { control, handleSubmit, watch } = formMethods
 
   const formName = watch('name')
   const isNameChanged = formName !== space?.name
@@ -52,12 +52,19 @@ const UpdateSpaceForm = ({ space }: { space: GetSpaceResponse | undefined }) => 
   return (
     <FormProvider {...formMethods}>
       <form onSubmit={onSubmit}>
-        <TextField
-          {...register('name')}
-          label="Space name"
-          fullWidth
-          slotProps={{ inputLabel: { shrink: true } }}
-          onKeyDown={(e) => e.stopPropagation()}
+        <Controller
+          name="name"
+          control={control}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              label="Space name"
+              fullWidth
+              value={field.value || ''}
+              slotProps={{ inputLabel: { shrink: true } }}
+              onKeyDown={(e) => e.stopPropagation()}
+            />
+          )}
         />
 
         {error && (
