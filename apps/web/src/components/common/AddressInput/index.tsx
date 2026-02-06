@@ -13,7 +13,7 @@ import {
   Skeleton,
   Box,
 } from '@mui/material'
-import { useFormContext, useWatch, type Validate, get } from 'react-hook-form'
+import { useFormContext, Controller, useWatch, type Validate, get } from 'react-hook-form'
 import { validatePrefixedAddress } from '@safe-global/utils/utils/validation'
 import { useCurrentChain } from '@/hooks/useChains'
 import useNameResolver from './useNameResolver'
@@ -54,7 +54,6 @@ const AddressInput = ({
   ...props
 }: AddressInputProps): ReactElement => {
   const {
-    register,
     setValue,
     control,
     formState: { errors, isValidating },
@@ -63,8 +62,10 @@ const AddressInput = ({
 
   const currentChain = useCurrentChain()
   const rawValueRef = useRef<string>('')
-  const watchedValue = useWatch({ name, control })
   const currentShortName = chain?.shortName || currentChain?.shortName || ''
+
+  // Watch the form value for ENS resolution and address book lookups
+  const watchedValue = useWatch({ name, control })
 
   const addressBook = useAddressBook()
 
@@ -109,19 +110,45 @@ const AddressInput = ({
   // On ENS resolution, update the input value
   useEffect(() => {
     if (address) {
-      setAddressValue(`${currentShortName}:${address}`)
+      // ENS resolution returns a pure address, don't add prefix
+      rawValueRef.current = address
+      setAddressValue(address)
     }
-  }, [address, currentShortName, setAddressValue])
+  }, [address, setAddressValue])
 
   // Retransform the value when chain changes
   useEffect(() => {
     if (address) return
 
-    if (watchedValue) {
-      const transformedValue = transformAddressValue(watchedValue)
-      setAddressValue(transformedValue)
+    if (watchedValue && rawValueRef.current) {
+      const transformedValue = transformAddressValue(rawValueRef.current)
+      // Only update if the transformed value is different to avoid loops
+      if (transformedValue !== watchedValue) {
+        setAddressValue(transformedValue)
+      }
     }
   }, [address, currentShortName, setAddressValue, transformAddressValue, watchedValue])
+
+  const startAdornment = useMemo(
+    () =>
+      addressBook[watchedValue] ? (
+        <AddressInputReadOnly address={watchedValue} showPrefix={showPrefix} chainId={chain?.chainId} />
+      ) : (
+        // Display the current short name in the adornment, unless the value contains the same prefix
+        <InputAdornment position="end" sx={{ ml: 0 }}>
+          <Box mr={1}>
+            {watchedValue && !fieldError ? (
+              <Identicon address={watchedValue} size={32} />
+            ) : (
+              <Skeleton variant="circular" width={32} height={32} animation={false} />
+            )}
+          </Box>
+
+          {showPrefix && !rawValueRef.current.startsWith(`${currentShortName}:`) && <Box>{currentShortName}:</Box>}
+        </InputAdornment>
+      ),
+    [addressBook, watchedValue, showPrefix, chain?.chainId, fieldError, currentShortName],
+  )
 
   const endAdornment = (
     <InputAdornment position="end">
@@ -151,72 +178,62 @@ const AddressInput = ({
 
   const resetName = () => {
     if (!props.disabled && addressBook[watchedValue]) {
-      setValue(name, '')
+      rawValueRef.current = ''
+      setValue(name, '', { shouldValidate: true })
       onReset?.()
     }
   }
 
   return (
-    <>
-      <TextField
-        {...props}
-        className={inputCss.input}
-        autoComplete="off"
-        autoFocus={props.focused}
-        label={<>{error?.message || props.label || `Recipient address${isDomainLookupEnabled ? ' or ENS' : ''}`}</>}
-        error={!!error}
-        fullWidth
-        onClick={resetName}
-        spellCheck={false}
-        InputProps={{
-          ...(props.InputProps || {}),
-          className: addressBook[watchedValue] ? css.readOnly : undefined,
-
-          startAdornment: addressBook[watchedValue] ? (
-            <AddressInputReadOnly address={watchedValue} showPrefix={showPrefix} chainId={chain?.chainId} />
-          ) : (
-            // Display the current short name in the adornment, unless the value contains the same prefix
-            <InputAdornment position="end" sx={{ ml: 0 }}>
-              <Box mr={1}>
-                {watchedValue && !fieldError ? (
-                  <Identicon address={watchedValue} size={32} />
-                ) : (
-                  <Skeleton variant="circular" width={32} height={32} animation={false} />
-                )}
-              </Box>
-
-              {showPrefix && !rawValueRef.current.startsWith(`${currentShortName}:`) && <Box>{currentShortName}:</Box>}
-            </InputAdornment>
-          ),
-
-          endAdornment,
-        }}
-        InputLabelProps={{
-          ...(props.InputLabelProps || {}),
-          shrink: true,
-        }}
-        {...register(name, {
-          deps,
-
-          required,
-
-          setValueAs: transformAddressValue,
-
-          validate: async () => {
-            const value = rawValueRef.current
-            if (value) {
-              return validatePrefixed(value) || (await validate?.(parsePrefixedAddress(value).address))
-            }
-          },
-
-          // Workaround for a bug in react-hook-form that it restores a cached error state on blur
-          onBlur: () => setTimeout(() => trigger(name), 100),
-        })}
-        // Workaround for a bug in react-hook-form when `register().value` is cached after `setValueAs`
-        // Only seems to occur on the `/load` route
-        value={watchedValue}
-      />
-    </>
+    <Controller
+      name={name}
+      control={control}
+      rules={{
+        deps,
+        required,
+        validate: async () => {
+          const value = rawValueRef.current
+          if (value) {
+            return validatePrefixed(value) || (await validate?.(parsePrefixedAddress(value).address))
+          }
+        },
+      }}
+      render={({ field }) => (
+        <TextField
+          {...props}
+          className={inputCss.input}
+          autoComplete="off"
+          autoFocus={props.focused}
+          label={<>{error?.message || props.label || `Recipient address${isDomainLookupEnabled ? ' or ENS' : ''}`}</>}
+          error={!!error}
+          fullWidth
+          onClick={resetName}
+          spellCheck={false}
+          InputProps={{
+            ...(props.InputProps || {}),
+            className: addressBook[watchedValue] ? css.readOnly : undefined,
+            startAdornment,
+            endAdornment,
+          }}
+          InputLabelProps={{
+            ...(props.InputLabelProps || {}),
+            shrink: true,
+          }}
+          value={rawValueRef.current || field.value || ''}
+          onChange={(e) => {
+            const rawValue = e.target.value
+            rawValueRef.current = cleanInputValue(rawValue)
+            const transformedValue = transformAddressValue(rawValue)
+            field.onChange(transformedValue)
+          }}
+          onBlur={() => {
+            field.onBlur()
+            // Workaround for a bug in react-hook-form that it restores a cached error state on blur
+            setTimeout(() => trigger(name), 100)
+          }}
+        />
+      )}
+    />
   )
 }
 
