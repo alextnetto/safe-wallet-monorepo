@@ -3,7 +3,7 @@ import classnames from 'classnames'
 import type { CheckboxProps } from '@mui/material'
 import { Grid, Button, Checkbox, FormControlLabel, Typography, Paper, SvgIcon, Box } from '@mui/material'
 import WarningIcon from '@/public/images/notifications/warning.svg'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import * as metadata from '@/markdown/terms/version'
 
 import { useAppDispatch, useAppSelector } from '@/store'
@@ -48,7 +48,7 @@ export const CookieAndTermBanner = ({
   const dispatch = useAppDispatch()
   const cookies = useAppSelector(selectCookies)
 
-  const { register, watch, getValues, setValue } = useForm({
+  const { control, getValues, setValue } = useForm({
     defaultValues: {
       [CookieAndTermType.TERMS]: true,
       [CookieAndTermType.NECESSARY]: true,
@@ -133,20 +133,40 @@ export const CookieAndTermBanner = ({
                     mb: 2,
                   }}
                 >
-                  <CookieCheckbox
-                    checkboxProps={{ ...register(CookieAndTermType.UPDATES), id: 'beamer' }}
-                    label="Beamer"
-                    checked={watch(CookieAndTermType.UPDATES)}
+                  <Controller
+                    name={CookieAndTermType.UPDATES}
+                    control={control}
+                    render={({ field }) => (
+                      <CookieCheckbox
+                        checkboxProps={{
+                          ...field,
+                          checked: field.value,
+                          id: 'beamer',
+                        }}
+                        label="Beamer"
+                        checked={field.value}
+                      />
+                    )}
                   />
                   <br />
                   <Typography variant="body2">New features and product announcements</Typography>
                 </Box>
 
                 <Box>
-                  <CookieCheckbox
-                    checkboxProps={{ ...register(CookieAndTermType.ANALYTICS), id: 'ga' }}
-                    label="Analytics"
-                    checked={watch(CookieAndTermType.ANALYTICS)}
+                  <Controller
+                    name={CookieAndTermType.ANALYTICS}
+                    control={control}
+                    render={({ field }) => (
+                      <CookieCheckbox
+                        checkboxProps={{
+                          ...field,
+                          checked: field.value,
+                          id: 'ga',
+                        }}
+                        label="Analytics"
+                        checked={field.value}
+                      />
+                    )}
                   />
                   <br />
                   <Typography variant="body2">Analytics tools to understand usage patterns.</Typography>
